@@ -23,14 +23,22 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// <summary>
         /// 默认血条颜色配置
         /// </summary>
-        private readonly HealthBarColor[] DefaultColors =
-        [
-            new HealthBarColor { Name = "purple", Color = Color.Color8(62, 79, 195) },
-            new HealthBarColor { Name = "blue", Color = Color.Color8(39, 117, 240) },
-            new HealthBarColor { Name = "green", Color = Color.Color8(0, 181, 0) },
-            new HealthBarColor { Name = "yellow", Color = Color.Color8(240, 110, 39) },
-            new HealthBarColor { Name = "red", Color = Color.Color8(255, 0, 0) }
-        ];
+        readonly private HealthBarColor[] DefaultColors =
+           [
+                new HealthBarColor { Name = "purple", Color = Color.Color8(62, 79, 195) },
+                new HealthBarColor { Name = "blue", Color = Color.Color8(39, 117, 240) },
+                new HealthBarColor { Name = "green", Color = Color.Color8(0, 181, 0) },
+                new HealthBarColor { Name = "yellow", Color = Color.Color8(240, 110, 39) },
+                new HealthBarColor { Name = "red", Color = Color.Color8(255, 0, 0) }
+           ];
+
+        [Export]
+        [ExportGroup("HealthBar")]
+        /// <summary>
+        /// 血条颜色配置（可在编辑器中修改）
+        /// 注: 使用此属性时，DefaultColors 将被覆盖，CurrentColors 将使用此属性的值
+        /// </summary>
+        private Color[] DefaultColorsArray;
 
         /// <summary>
         /// 当前血条颜色配置
@@ -155,8 +163,20 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         public override void _Ready()
         {
             // 初始化颜色配置
-            CurrentColors = new HealthBarColor[DefaultColors.Length];
-            Array.Copy(DefaultColors, CurrentColors, DefaultColors.Length);
+            if (DefaultColorsArray != null && DefaultColorsArray.Length > 0)
+            {
+
+                CurrentColors = new HealthBarColor[DefaultColorsArray.Length];
+                for (int i = 0; i < DefaultColorsArray.Length; i++)
+                {
+                    CurrentColors[i] = new HealthBarColor { Name = $"color_{i}", Color = DefaultColorsArray[i] };
+                }
+            }
+            else
+            {
+                CurrentColors = new HealthBarColor[DefaultColors.Length];
+                Array.Copy(DefaultColors, CurrentColors, DefaultColors.Length);
+            }
 
             // 使用纯色 StyleBox 替代贴图：填充颜色在代码中动态修改
             HealthBarUpper.AddThemeStyleboxOverride("background", new StyleBoxEmpty());
