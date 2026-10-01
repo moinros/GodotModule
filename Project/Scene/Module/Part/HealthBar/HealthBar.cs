@@ -233,7 +233,9 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             // 更新下层血条颜色
             if (barCount > 1)
             {
-                HealthBarUnderColor.Color = CurrentColors[GetColorIndexFromBarCount(barCount - 1)].Color;
+                // 夹紧索引：血条计数与总血条数不一致时防止数组越界
+                int underColorIndex = Mathf.Clamp(GetColorIndexFromBarCount(barCount - 1), 0, CurrentColors.Length - 1);
+                HealthBarUnderColor.Color = CurrentColors[underColorIndex].Color;
             }
             else
             {
@@ -541,14 +543,28 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
 
         /// <summary>
         /// 设置单条血条最大值
+        /// 注: 单根血条最大值变化会同步重算总血条数与当前血条计数，并刷新颜色与计数显示
         /// </summary>
         public void SetHealthBarSingleValueMax(int value)
         {
-            HealthBarSingleValueMax = value;
-            HealthBarUpper.MaxValue = value;
+            // 至少为 1，避免 0/负值导致取模与除零异常
+            HealthBarSingleValueMax = Mathf.Max(value, 1);
+            HealthBarUpper.MaxValue = HealthBarSingleValueMax;
+
+            // 同步重算总血条数与当前血条计数：
+            HealthBarTotalCount = (int)Math.Ceiling((double)HealthMax / HealthBarSingleValueMax);
+            HealthBarCurrentCount = GetHealthBarCount();
+            ShowHealthBarCount(HealthBarCurrentCount);
+
             // 中断进行中的填充动画并直接定位到当前血量，避免条内值映射变化导致显示错位
             CancelHealAnimation();
             HealthBarUpper.Value = GetBarValueInBar(HealthValue);
+
+            // 重置掉整条判断基准：单根最大值变化属于配置刷新，不视为掉条
+            _lastBarCount = HealthBarCurrentCount;
+
+            // 按新的血条计数刷新颜色显示（上层条填充色、下层条下一根颜色）
+            SetColorIndex(GetColorIndexFromBarCount(HealthBarCurrentCount));
         }
 
 
@@ -678,7 +694,12 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
                 return 0;
             }
             // 其余血条在前 N-1 个颜色中循环：满血为首色，每掉一整条推进一格
-            return (HealthBarTotalCount - barCount) % cycleLength;
+            int colorIndex = (HealthBarTotalCount - barCount) % cycleLength;
+            if (colorIndex < 0)
+            {
+                colorIndex += cycleLength;
+            }
+            return colorIndex;
         }
 
         /// <summary>

@@ -15,7 +15,6 @@ anchors_preset = 0
 offset_right = 1500.0
 offset_bottom = 50.0
 script = ExtResource("1_urmrx")
-DefaultColorsArray = PackedColorArray(0.8862616, 0.88626146, 0.8862615, 1)
 HealthBarUpper = NodePath("Panel/PanelContainer/HealthBarUpper")
 HealthBarUnderColor = NodePath("Panel/PanelContainer/HealthBarUnderColor")
 HealthBarCurrentCountLabel = NodePath("Panel/PanelContainer/HealthBarCurrentCount")
