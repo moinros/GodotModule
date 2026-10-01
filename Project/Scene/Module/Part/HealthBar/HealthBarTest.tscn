@@ -1,0 +1,96 @@
+[gd_scene format=3 uid="uid://c8ydefo1srcfm"]
+
+[ext_resource type="PackedScene" uid="uid://1qlwxwno5he4" path="res://Project/Scene/Module/Part/HealthBar/health_bar.tscn" id="1_mmr1g"]
+
+[node name="HealthBarTest" type="Node2D" unique_id=1744164192]
+
+[node name="HealthBar" parent="." unique_id=778024048 node_paths=PackedStringArray("HpIncreaseText", "HpReduceText", "HpBarMaxText", "HpMaxText") instance=ExtResource("1_mmr1g")]
+anchors_preset = 8
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 523.0
+offset_top = 302.0
+offset_right = 1523.0
+offset_bottom = 342.0
+grow_vertical = 2
+HpIncreaseText = NodePath("../Test/GridContainer/LineEdit")
+HpReduceText = NodePath("../Test/GridContainer/LineEdit2")
+HpBarMaxText = NodePath("../Test/GridContainer/LineEdit3")
+HpMaxText = NodePath("../Test/GridContainer/LineEdit4")
+
+[node name="Test" type="Control" parent="." unique_id=625782092]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 591.0
+offset_top = 884.0
+offset_right = 1462.0
+offset_bottom = 998.0
+
+[node name="GridContainer" type="GridContainer" parent="Test" unique_id=1743652472]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -325.0
+offset_top = -444.0
+offset_right = 325.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/h_separation = 50
+theme_override_constants/v_separation = 20
+columns = 2
+
+[node name="LineEdit" type="LineEdit" parent="Test/GridContainer" unique_id=1300658159]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "500"
+
+[node name="TestHealthIncrease" type="Button" parent="Test/GridContainer" unique_id=33443034]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "+"
+
+[node name="LineEdit2" type="LineEdit" parent="Test/GridContainer" unique_id=1147181536]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "10"
+
+[node name="TestHealthReduce" type="Button" parent="Test/GridContainer" unique_id=2111685739]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "-"
+
+[node name="LineEdit3" type="LineEdit" parent="Test/GridContainer" unique_id=538849444]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "1000"
+
+[node name="TestSetHpBarMax" type="Button" parent="Test/GridContainer" unique_id=934424242]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "单条血量"
+
+[node name="LineEdit4" type="LineEdit" parent="Test/GridContainer" unique_id=1986748836]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "10000"
+
+[node name="TestSetHpMax" type="Button" parent="Test/GridContainer" unique_id=25705959]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "总血量"
+
+[connection signal="button_down" from="Test/GridContainer/TestHealthIncrease" to="HealthBar" method="TestHealthIncrease"]
+[connection signal="button_down" from="Test/GridContainer/TestHealthReduce" to="HealthBar" method="TestHealthReduce"]
+[connection signal="button_down" from="Test/GridContainer/TestSetHpBarMax" to="HealthBar" method="TestSetHpBarMax"]
+[connection signal="button_down" from="Test/GridContainer/TestSetHpMax" to="HealthBar" method="TestSetHpMax"]

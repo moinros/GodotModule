@@ -1,0 +1,137 @@
+[gd_scene format=3 uid="uid://1qlwxwno5he4"]
+
+[ext_resource type="Script" uid="uid://bnqs2i5wmrnk1" path="res://Project/Scene/Module/Part/HealthBar/HealthBar.cs" id="1_urmrx"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qysqr"]
+bg_color = Color(0.16924527, 0.1692453, 0.16924527, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+
+[node name="HealthBar" type="Control" unique_id=778024048 node_paths=PackedStringArray("HealthBarUpper", "HealthBarUnderColor", "HealthBarCurrentCountLabel", "HealthValueLabel", "HealthMaxLabel")]
+layout_mode = 3
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -960.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+script = ExtResource("1_urmrx")
+HealthBarUpper = NodePath("Panel/PanelContainer/HealthBarUpper")
+HealthBarUnderColor = NodePath("Panel/PanelContainer/HealthBarUnderColor")
+HealthBarCurrentCountLabel = NodePath("Panel/PanelContainer/HealthBarCurrentCount")
+HealthValueLabel = NodePath("Panel/PanelContainer/HealthText/HealthValue")
+HealthMaxLabel = NodePath("Panel/PanelContainer/HealthText/HealthMax")
+
+[node name="Panel" type="Panel" parent="." unique_id=752110349]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_qysqr")
+
+[node name="PanelContainer" type="Panel" parent="Panel" unique_id=1881401713]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -498.0
+offset_top = -18.0
+offset_right = 498.0
+offset_bottom = 18.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HealthBarUnderColor" type="ColorRect" parent="Panel/PanelContainer" unique_id=637266400]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0)
+
+[node name="HealthBarUpper" type="ProgressBar" parent="Panel/PanelContainer" unique_id=51489958]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+show_percentage = false
+
+[node name="HealthBarCurrentCount" type="Label" parent="Panel/PanelContainer" unique_id=776441326]
+layout_mode = 1
+anchors_preset = 14
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_top = -17.0
+offset_bottom = 17.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 24
+text = "x1"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HealthText" type="Control" parent="Panel/PanelContainer" unique_id=968629382]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -18.0
+offset_right = 180.0
+offset_bottom = 18.0
+grow_vertical = 2
+
+[node name="HealthValue" type="Label" parent="Panel/PanelContainer/HealthText" unique_id=552297188]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -11.5
+offset_right = 85.0
+offset_bottom = 11.5
+grow_vertical = 2
+text = "100"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="Label" type="Label" parent="Panel/PanelContainer/HealthText" unique_id=987150587]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -5.0
+offset_top = -11.5
+offset_right = 5.0
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "/"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HealthMax" type="Label" parent="Panel/PanelContainer/HealthText" unique_id=502848764]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -85.0
+offset_top = -11.5
+offset_bottom = 11.5
+grow_horizontal = 0
+grow_vertical = 2
+text = "100"
+vertical_alignment = 1
