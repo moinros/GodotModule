@@ -65,6 +65,7 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// 最上层血条
         /// </summary>
         [Export]
+        [ExportGroup("HealthBar")]
         ProgressBar HealthBarUpper;
 
         /// <summary>
@@ -688,10 +689,11 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         }
 
 
-        // -------------------- 测试接口：在编辑器中输入数值并点击按钮测试血量增减与血条最大值设置 --------------------
+        /// -------------------- 以下为测试用：在编辑器中输入数值并点击按钮测试血量增减与血条最大值设置 --------------------
 
 
         [Export]
+        [ExportGroup("Test")]
         LineEdit HpIncreaseText;
         /// <summary>
         /// 测试增加生命值

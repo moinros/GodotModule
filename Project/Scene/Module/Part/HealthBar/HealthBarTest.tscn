@@ -5,14 +5,10 @@
 [node name="HealthBarTest" type="Node2D" unique_id=1744164192]
 
 [node name="HealthBar" parent="." unique_id=778024048 node_paths=PackedStringArray("HpIncreaseText", "HpReduceText", "HpBarMaxText", "HpMaxText") instance=ExtResource("1_mmr1g")]
-anchors_preset = 8
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 523.0
-offset_top = 302.0
-offset_right = 1523.0
-offset_bottom = 342.0
-grow_vertical = 2
+offset_left = 216.0
+offset_top = 300.0
+offset_right = 1716.0
+offset_bottom = 340.0
 HpIncreaseText = NodePath("../Test/GridContainer/LineEdit")
 HpReduceText = NodePath("../Test/GridContainer/LineEdit2")
 HpBarMaxText = NodePath("../Test/GridContainer/LineEdit3")
