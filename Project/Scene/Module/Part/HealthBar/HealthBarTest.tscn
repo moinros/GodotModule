@@ -54,7 +54,7 @@ text = "+"
 custom_minimum_size = Vector2(300, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 64
-text = "10"
+text = "50"
 
 [node name="TestHealthReduce" type="Button" parent="Test/GridContainer" unique_id=2111685739]
 custom_minimum_size = Vector2(300, 0)

@@ -2,7 +2,7 @@ using Godot;
 using Moinros.CSharp.Util;
 using System;
 
-namespace GodotModule.Project.Scene.Module.Part.HealthBar
+namespace MetalLimit.Project.Scene.Module.Part.HealthBar
 {
 
     /// <summary>
@@ -11,44 +11,30 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
     public partial class HealthBar : Control
     {
 
-        /// <summary>
-        /// 血条颜色结构
-        /// </summary>
-        public struct HealthBarColor
-        {
-            public Color Color;
-            public string Name;
-        }
-
-        /// <summary>
-        /// 默认血条颜色配置
-        /// </summary>
-        readonly private HealthBarColor[] DefaultColors =
-           [
-                new HealthBarColor { Name = "purple", Color = Color.Color8(62, 79, 195) },
-                new HealthBarColor { Name = "blue", Color = Color.Color8(39, 117, 240) },
-                new HealthBarColor { Name = "green", Color = Color.Color8(0, 181, 0) },
-                new HealthBarColor { Name = "yellow", Color = Color.Color8(240, 110, 39) },
-                new HealthBarColor { Name = "red", Color = Color.Color8(255, 0, 0) }
-           ];
-
         [Export]
         [ExportGroup("HealthBar")]
         /// <summary>
-        /// 血条颜色配置（可在编辑器中修改）
-        /// 注: 使用此属性时，DefaultColors 将被覆盖，CurrentColors 将使用此属性的值
+        /// 默认血条颜色配置（可在编辑器中修改）
+        /// 注: 颜色按血条数量循环：1 条血 = 首位颜色，每多一条血推进一个颜色，循环完一轮回到首位颜色重新开始
         /// </summary>
-        private Color[] DefaultColorsArray;
+        private Color[] DefaultColors = [
+            Color.Color8(255, 0, 0) ,
+            Color.Color8(240, 160, 40),
+            Color.Color8(0, 180, 0),
+            Color.Color8(40, 120, 240),
+            Color.Color8(60, 80, 200)
+        ];
 
         /// <summary>
         /// 当前血条颜色配置
         /// </summary>
-        private HealthBarColor[] CurrentColors;
+        private Color[] CurrentColors;
 
         /// <summary>
         /// 最大血量
         /// </summary>
         public int HealthMax { get; private set; }
+
         /// <summary>
         /// 当前血量
         /// </summary>
@@ -73,7 +59,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// 最上层血条
         /// </summary>
         [Export]
-        [ExportGroup("HealthBar")]
         ProgressBar HealthBarUpper;
 
         /// <summary>
@@ -91,7 +76,7 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// <summary>
         /// 显示血条计数
         /// </summary>
-        void ShowHealthBarCount(int value)
+        private void ShowHealthBarCount(int value)
         {
             HealthBarCurrentCountLabel.Text = $"x{value}";
         }
@@ -114,22 +99,29 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         private readonly StyleBoxFlat _upperFillStyle = new();
 
         /// <summary>
-        /// 过渡动画时长（秒）：受击后失去血量区间的色块由亮变深直至消失的时间
+        /// 过渡动画颜色衰减时长（秒）：受击后失去血量区间的色块由亮变深的倒计时
         /// </summary>
         [Export]
-        float TransitionDuration = 0.5f;
+        float TransitionDuration = 0.4f;
 
         /// <summary>
-        /// 过渡动画起始颜色（亮白闪烁）
+        /// 过渡动画起始颜色（亮白）
         /// </summary>
         [Export]
-        Color TransitionColorBright = new(1f, 1f, 1f);
+        Color TransitionColorBright = new(1f, 1f, 1f, 0.8f);
 
         /// <summary>
-        /// 过渡动画结束颜色（暗色）
+        /// 过渡动画结束颜色（暗色）：倒计时结束后色块保持此颜色进入收缩阶段，直至缩短到消失
         /// </summary>
         [Export]
-        Color TransitionColorDark = new(0.25f, 0.25f, 0.25f);
+        Color TransitionColorDark = new(0.55f, 0f, 0f, 0.8f);
+
+        /// <summary>
+        /// 过渡色块收缩速度（血量/秒）：颜色衰减倒计时结束后，色块从右向左以该速度缩短
+        /// （类似加血填充血条的相反效果），直至缩短到消失；默认 500，单条血量 1000 时约 2 秒收缩一整条
+        /// </summary>
+        [Export]
+        float TransitionShrinkSpeed = 500f;
 
         /// <summary>
         /// 血量增加时的填充动画时长（秒）：血条以极快速度填充到新血量值
@@ -138,20 +130,26 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         float HealDuration = 0.2f;
 
         /// <summary>
-        /// 一个正在播放的过渡色块（受击后失去血量区间的颜色衰减动画）
+        /// 一个正在播放的过渡色块（受击后失去血量区间的“颜色衰减 + 收缩消失”两阶段动画）
         /// </summary>
         private sealed class TransitionChunk
         {
             /// <summary>色块节点（最上层血条的子节点，绘制在血条填充之下，只露出失去的血量部分）</summary>
             public ColorRect Rect;
-            /// <summary>已播放时间（秒）</summary>
+            /// <summary>已播放时间（秒，仅颜色衰减倒计时阶段使用）</summary>
             public float Elapsed;
-            /// <summary>总时长（秒）</summary>
+            /// <summary>颜色衰减倒计时时长（秒）</summary>
             public float Duration;
-            /// <summary>起始颜色（亮色闪烁）</summary>
+            /// <summary>起始颜色（亮色）</summary>
             public Color StartColor;
-            /// <summary>结束颜色（变深且完全透明，即消失）</summary>
+            /// <summary>结束颜色（暗色，收缩阶段保持此颜色直至缩短到消失）</summary>
             public Color EndColor;
+            /// <summary>是否已进入收缩阶段：倒计时结束后为 true，色块从右向左缩短直至消失</summary>
+            public bool Shrinking;
+            /// <summary>色块左端对应的血量值（收缩的终点）</summary>
+            public double LeftValue;
+            /// <summary>色块右端对应的血量值（收缩阶段逐帧递减）</summary>
+            public double RightValue;
         }
 
         /// <summary>
@@ -159,23 +157,19 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// </summary>
         private readonly LinkList<TransitionChunk> _activeChunks = new();
 
-
         public override void _Ready()
         {
-            // 初始化颜色配置
-            if (DefaultColorsArray != null && DefaultColorsArray.Length > 0)
+            base._Ready();
+            // 初始化颜色配置：复制一份导出的默认颜色作为运行时配置（修改运行时颜色不影响导出值）
+            if (DefaultColors != null && DefaultColors.Length > 0)
             {
-
-                CurrentColors = new HealthBarColor[DefaultColorsArray.Length];
-                for (int i = 0; i < DefaultColorsArray.Length; i++)
-                {
-                    CurrentColors[i] = new HealthBarColor { Name = $"color_{i}", Color = DefaultColorsArray[i] };
-                }
+                CurrentColors = new Color[DefaultColors.Length];
+                Array.Copy(DefaultColors, CurrentColors, DefaultColors.Length);
             }
             else
             {
-                CurrentColors = new HealthBarColor[DefaultColors.Length];
-                Array.Copy(DefaultColors, CurrentColors, DefaultColors.Length);
+                // 导出数组被清空（或为 null）时兜底为红色，保证后续取色不越界
+                CurrentColors = [Colors.Red];
             }
 
             // 使用纯色 StyleBox 替代贴图：填充颜色在代码中动态修改
@@ -189,29 +183,38 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             UpdateHealthBarColors();
         }
 
-
         public override void _Process(double delta)
         {
             base._Process(delta);
             // 推进血量填充动画（血量增加时血条以极快速度填充到新值）
             UpdateHealAnimation((float)delta);
-            // 推进所有过渡色块的颜色衰减（各色块独立计时，互不影响，可共存）
+            // 推进所有过渡色块的颜色衰减与收缩（各色块独立计时，互不影响，可共存）
             UpdateTransitionChunks((float)delta);
         }
+
         /// <summary>
         /// 设置血条颜色配置
+        /// 注: 颜色按血条数量循环：1 条血 = 首位颜色，每多一条血推进一个颜色，循环完一轮回到首位颜色重新开始
         /// </summary>
-        public void SetHealthBarColors(HealthBarColor[] colors)
+        private void SetHealthBarColors(Color[] colors)
         {
-            if (colors == null || colors.Length == 0)
+            if (colors != null && colors.Length > 0)
             {
-                CurrentColors = DefaultColors;
+                // 复制传入数组：外部后续修改原数组不会影响血条显示
+                CurrentColors = (Color[])colors.Clone();
+            }
+            else if (DefaultColors != null && DefaultColors.Length > 0)
+            {
+                // 传空重置为导出默认颜色的副本（保持“运行时配置是副本”的语义，不直接引用导出数组）
+                CurrentColors = (Color[])DefaultColors.Clone();
             }
             else
             {
-                CurrentColors = colors;
+                // 导出默认配置也为空时兜底红色
+                CurrentColors = [Colors.Red];
             }
-            UpdateHealthBarColors();
+            // 颜色配置变化后按当前血条计数重新计算颜色索引，再刷新显示
+            SetColorIndex(GetColorIndexFromBarCount(HealthBarCurrentCount));
         }
 
         /// <summary>
@@ -227,27 +230,40 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// </summary>
         private void UpdateHealthBarColors(int barCount)
         {
-            // 更新上层血条填充颜色
-            _upperFillStyle.BgColor = CurrentColors[Mathf.Clamp(_colorIndex, 0, CurrentColors.Length - 1)].Color;
+            // 颜色配置为空时无从取色：下层条置透明并跳过本次刷新，避免 Clamp(0, 0, -1) 得 -1 越界
+            if (CurrentColors == null || CurrentColors.Length == 0)
+            {
+                HealthBarUnderColor.Color = Colors.Transparent;
+                return;
+            }
 
-            // 更新下层血条颜色
+            // 更新上层血条填充颜色
+            _upperFillStyle.BgColor = CurrentColors[Mathf.Clamp(_colorIndex, 0, CurrentColors.Length - 1)];
+
+            // 更新下层血条颜色：显示下一根（少一条）血条的颜色
             if (barCount > 1)
             {
-                // 夹紧索引：血条计数与总血条数不一致时防止数组越界
-                int underColorIndex = Mathf.Clamp(GetColorIndexFromBarCount(barCount - 1), 0, CurrentColors.Length - 1);
-                HealthBarUnderColor.Color = CurrentColors[underColorIndex].Color;
+                // GetColorIndexFromBarCount 保证返回有效索引，无需额外夹紧
+                int underColorIndex = GetColorIndexFromBarCount(barCount - 1);
+                HealthBarUnderColor.Color = CurrentColors[underColorIndex];
             }
             else
             {
                 HealthBarUnderColor.Color = Colors.Transparent;
             }
         }
+
         /// <summary>
         /// 获取当前血条颜色配置
         /// </summary>
-        public HealthBarColor[] GetHealthBarColors()
+        private Color[] GetHealthBarColors()
         {
-            var colors = new HealthBarColor[CurrentColors.Length];
+            // 尚未初始化（_Ready 之前）或配置为空时返回空数组
+            if (CurrentColors == null || CurrentColors.Length == 0)
+            {
+                return [];
+            }
+            var colors = new Color[CurrentColors.Length];
             Array.Copy(CurrentColors, colors, CurrentColors.Length);
             return colors;
         }
@@ -255,11 +271,16 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// <summary>
         /// 获取指定索引的血条颜色
         /// </summary>
-        public HealthBarColor GetHealthBarColor(int index)
+        private Color GetHealthBarColor(int index)
         {
+            // 配置为空时兜底红色；越界时返回当前生效配置的首色（而非导出默认值）
+            if (CurrentColors == null || CurrentColors.Length == 0)
+            {
+                return Colors.Red;
+            }
             if (index < 0 || index >= CurrentColors.Length)
             {
-                return DefaultColors[0];
+                return CurrentColors[0];
             }
             return CurrentColors[index];
         }
@@ -267,11 +288,11 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// <summary>
         /// 设置指定索引的血条颜色
         /// </summary>
-        public void SetHealthBarColor(int index, Color color)
+        private void SetHealthBarColor(int index, Color color)
         {
-            if (index >= 0 && index < CurrentColors.Length)
+            if (CurrentColors != null && index >= 0 && index < CurrentColors.Length)
             {
-                CurrentColors[index].Color = color;
+                CurrentColors[index] = color;
                 UpdateHealthBarColors();
             }
         }
@@ -300,7 +321,7 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
                 int valueInBar = (int)GetBarValueInBar(HealthValue);
                 HealthBarUpper.Value = valueInBar;
 
-                // 在失去的血量区间上生成过渡色块（纯颜色由亮变深直至消失，不使用进度条）
+                // 在失去的血量区间上生成过渡色块（由亮变深后再从右向左收缩到消失，不使用进度条）
                 // 掉整条（或多条）时色块延伸到满条位置；条内扣血时延伸到更新前的值
                 int lostFrom = valueInBar;
                 int lostTo = HealthBarCurrentCount < _lastBarCount ? HealthBarSingleValueMax : previousValueInBar;
@@ -309,7 +330,7 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
                     SpawnTransitionChunk(lostFrom, lostTo);
                 }
 
-                // 根据剩余血条数切换颜色（非最后一条血在前 N-1 个颜色中循环，最后一条血必定为末位颜色红色）
+                // 根据剩余血条数切换颜色（全部颜色按血条数量循环轮换，最后一条血必定为首位颜色红色）
                 SetColorIndex(GetColorIndexFromBarCount(HealthBarCurrentCount));
             }
             else
@@ -326,12 +347,11 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             _lastHealthValue = HealthValue;
         }
 
-
         /// <summary>
         /// 在 [fromValue, toValue] 血量区间上生成一个过渡色块
         /// 色块作为最上层血条的子节点并绘制在其填充之下：
         /// 只露出当前填充右侧“失去的血量”部分，血量恢复后会被填充自然遮挡
-        /// 色块颜色由亮变深、逐渐透明，播放完毕后自动销毁
+        /// 色块先由亮变深播完颜色衰减倒计时，再从右向左收缩到零，最后自动销毁
         /// </summary>
         private void SpawnTransitionChunk(int fromValue, int toValue)
         {
@@ -357,33 +377,77 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
                 Elapsed = 0f,
                 Duration = Mathf.Max(TransitionDuration, 0.01f),
                 StartColor = TransitionColorBright,
-                // 结束态：颜色变深且完全透明（消失）
-                EndColor = new Color(TransitionColorDark.R, TransitionColorDark.G, TransitionColorDark.B, 0f),
+                // 结束态：颜色变深且保持可见，消失由收缩阶段完成
+                EndColor = TransitionColorDark,
+                Shrinking = false,
+                LeftValue = fromValue,
+                RightValue = toValue,
             });
         }
 
         /// <summary>
-        /// 逐帧推进所有过渡色块的颜色衰减，播放完毕后销毁色块
+        /// 逐帧推进所有过渡色块的两阶段动画：
+        /// 阶段一（颜色衰减倒计时）：色块由亮变深；
+        /// 阶段二（收缩）：倒计时结束后不再直接消失，而是从右向左以指定速度缩短
         /// </summary>
         private void UpdateTransitionChunks(float delta)
         {
+            // 收缩速度下限 1（血量/秒），避免 0 或负值导致色块永远无法收缩到消失
+            float shrinkSpeed = Mathf.Max(TransitionShrinkSpeed, 1f);
+
             TransitionChunk chunk = _activeChunks.Next();
             while (chunk != null)
             {
-                chunk.Elapsed += delta;
-                float t = chunk.Elapsed / chunk.Duration;
-                if (t < 1f)
+                if (chunk.Shrinking)
                 {
-                    chunk.Rect.Color = chunk.StartColor.Lerp(chunk.EndColor, t);
+                    // 收缩阶段：右端以指定速度向左推进
+                    ShrinkTransitionChunk(chunk, delta, shrinkSpeed);
                 }
                 else
                 {
-                    chunk.Rect.QueueFree();
-                    _activeChunks.Remove(chunk);
+                    chunk.Elapsed += delta;
+                    float t = chunk.Elapsed / chunk.Duration;
+                    if (t < 1f)
+                    {
+                        // 颜色衰减阶段：由亮变深
+                        chunk.Rect.Color = chunk.StartColor.Lerp(chunk.EndColor, t);
+                    }
+                    else
+                    {
+                        // 倒计时结束：定格为结束颜色并进入收缩阶段，倒计时超出的时间计入收缩
+                        chunk.Rect.Color = chunk.EndColor;
+                        chunk.Shrinking = true;
+                        ShrinkTransitionChunk(chunk, chunk.Elapsed - chunk.Duration, shrinkSpeed);
+                    }
                 }
                 chunk = _activeChunks.Next();
             }
 
+        }
+
+        /// <summary>
+        /// 按时长收缩单个过渡色块：右端血量值以指定速度递减（从右向左缩短，类似加血填充的相反效果），
+        /// 缩短到左端（宽度为零）时销毁色块；否则按血量比例更新右端锚点，保持跟随血条尺寸变化
+        /// </summary>
+        private void ShrinkTransitionChunk(TransitionChunk chunk, float seconds, float shrinkSpeed)
+        {
+            if (seconds <= 0f)
+            {
+                return;
+            }
+
+            chunk.RightValue -= shrinkSpeed * seconds;
+            if (chunk.RightValue <= chunk.LeftValue)
+            {
+                // 已缩短到零：销毁色块
+                chunk.Rect.QueueFree();
+                _activeChunks.Remove(chunk);
+            }
+            else
+            {
+                // 用锚点按血量比例更新右端位置：色块自动跟随血条尺寸变化
+                chunk.Rect.SetAnchorAndOffset(Side.Right, (float)(chunk.RightValue / HealthBarSingleValueMax), 0);
+            }
         }
 
         /// <summary>
@@ -391,7 +455,8 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// </summary>
         private void ClearTransitionChunks()
         {
-            // _activeChunks.RestoreCursor();
+            // Remove 会把游标回缩到被删节点的前驱，Next() 随后重新定位到后继，
+            // 因此该循环本身即可清空整条链表，无需再调用 RemoveAll()
             TransitionChunk chunk = _activeChunks.Next();
             while (chunk != null)
             {
@@ -399,8 +464,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
                 _activeChunks.Remove(chunk);
                 chunk = _activeChunks.Next();
             }
-            // 节点也要全部移出链表，否则下一帧会遍历到已释放的 Godot 对象
-            _activeChunks.RemoveAll();
         }
 
         /// <summary>
@@ -411,6 +474,13 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             TransitionDuration = Mathf.Max(seconds, 0.01f);
         }
 
+        /// <summary>
+        /// 设置过渡色块收缩速度（血量/秒，最小 1）；只影响之后生成的过渡色块，正在播放的不受影响
+        /// </summary>
+        public void SetTransitionShrinkSpeed(float speed)
+        {
+            TransitionShrinkSpeed = Mathf.Max(speed, 1f);
+        }
 
         // ---------------- 血量填充动画（血量增加时血条极速填充到新值） ----------------
 
@@ -540,7 +610,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             HealDuration = Mathf.Max(seconds, 0.01f);
         }
 
-
         /// <summary>
         /// 设置单条血条最大值
         /// 注: 单根血条最大值变化会同步重算总血条数与当前血条计数，并刷新颜色与计数显示
@@ -558,6 +627,8 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
 
             // 中断进行中的填充动画并直接定位到当前血量，避免条内值映射变化导致显示错位
             CancelHealAnimation();
+            // 清除仍在播放的过渡色块：其血量值与锚点按旧的单条最大值计算，换算后会错位
+            ClearTransitionChunks();
             HealthBarUpper.Value = GetBarValueInBar(HealthValue);
 
             // 重置掉整条判断基准：单根最大值变化属于配置刷新，不视为掉条
@@ -567,15 +638,15 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             SetColorIndex(GetColorIndexFromBarCount(HealthBarCurrentCount));
         }
 
-
         /// <summary>
         /// 设置最大生命值
         /// 若最大值小于当前血量：同步夹紧当前血量，并刷新血条颜色、计数与进度显示
         /// </summary>
         public void SetHealthMax(int value)
         {
-            HealthMax = value;
-            HealthMaxLabel.Text = value.ToString();
+            // 至少为 0：负的最大值会让 Mathf.Clamp(value, 0, max) 反向得出负血量
+            HealthMax = Mathf.Max(value, 0);
+            HealthMaxLabel.Text = HealthMax.ToString();
             HealthBarTotalCount = (int)Math.Ceiling((double)HealthMax / HealthBarSingleValueMax);
 
             // 最大值小于当前血量：同步夹紧当前血量并刷新数值标签
@@ -597,7 +668,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             UpdateHealthBarValue();
         }
 
-
         /// <summary>
         /// 统一入口：应用新的生命值（绝对值）并刷新标签与血条显示
         /// 自动夹紧到 [0, HealthMax]；扣血生成过渡色块，加血触发极速填充动画
@@ -612,21 +682,21 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         }
 
         /// <summary>
-        /// 修改当前生命值（传入增量：正数加血、负数扣血）
-        /// 扣血触发过渡色块动画，加血触发极速填充动画
-        /// </summary>
-        public void ModifyHealthValue(int value)
-        {
-            ApplyHealthValue(HealthValue + value);
-        }
-
-        /// <summary>
         /// 设置当前生命值（传入绝对值）
         /// 血条直接切换到对应的颜色：血量减少触发过渡色块动画，血量增加触发极速填充动画
         /// </summary>
         public void SetHealthValue(int value)
         {
             ApplyHealthValue(value);
+        }
+
+        /// <summary>
+        /// 修改当前生命值（传入增量：正数加血、负数扣血）
+        /// 扣血触发过渡色块动画，加血触发极速填充动画
+        /// </summary>
+        public void ModifyHealthValue(int value)
+        {
+            ApplyHealthValue(HealthValue + value);
         }
 
         /// <summary>
@@ -647,7 +717,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             ModifyHealthValue(value);
         }
 
-
         /// <summary>
         /// 获取剩余血条数量
         /// </summary>
@@ -657,7 +726,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
             if (HealthValue <= 0) { return 0; }
             return (int)Math.Ceiling((double)HealthValue / HealthBarSingleValueMax);
         }
-
 
         /// <summary>
         /// 上次更新时的血条计数（用于判断是否掉整条）
@@ -669,7 +737,6 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
         /// </summary>
         private int _lastHealthValue;
 
-
         /// <summary>
         /// 血条颜色索引
         /// </summary>
@@ -677,54 +744,32 @@ namespace GodotModule.Project.Scene.Module.Part.HealthBar
 
         /// <summary>
         /// 根据剩余血条计数计算颜色索引（颜色轮换规则）
-        /// 非最后一条血在前 N-1 个颜色中循环轮换；仅剩最后一条血时必定使用末位颜色（默认红）
+        /// 全部颜色按血条数量循环：1 条血 = 首位颜色（默认红色），每多一条血推进一个颜色，
+        /// 循环完一轮回到首位颜色重新开始（5 色示例：1=红、2=黄、3=绿、4=蓝、5=紫、6=红、7=黄……）
         /// </summary>
-        int GetColorIndexFromBarCount(int barCount)
+        private int GetColorIndexFromBarCount(int barCount)
         {
-            // 最后一条血（及空血条）必定使用末位颜色
+            // 最后一条血（及空血条）必定使用第一个颜色（默认红色）
             if (barCount <= 1)
-            {
-                return CurrentColors.Length - 1;
-            }
-            // 轮换色数量：前 N-1 个颜色（末位颜色保留给最后一条血）
-            int cycleLength = CurrentColors.Length - 1;
-            // 颜色配置不足 2 个时无从轮换，固定使用首色
-            if (cycleLength <= 0)
             {
                 return 0;
             }
-            // 其余血条在前 N-1 个颜色中循环：满血为首色，每掉一整条推进一格
-            int colorIndex = (HealthBarTotalCount - barCount) % cycleLength;
-            if (colorIndex < 0)
+            // 颜色配置为空时无从取色，防御性返回首色索引
+            if (CurrentColors == null || CurrentColors.Length == 0)
             {
-                colorIndex += cycleLength;
+                return 0;
             }
-            return colorIndex;
+            // 直接按血条数量在全部颜色中循环：血条数减 1 即颜色索引
+            return (barCount - 1) % CurrentColors.Length;
         }
-
-        /// <summary>
-        /// 下一个颜色的索引
-        /// </summary>
-        int NextColorIndex()
-        {
-            return (_colorIndex + 1) % CurrentColors.Length;
-        }
-
-        /// <summary>
-        /// 上一个颜色的索引
-        /// </summary>
-        int PreviousColorIndex()
-        {
-            return (_colorIndex - 1 + CurrentColors.Length) % CurrentColors.Length;
-        }
-
 
         /// <summary>
         /// 设置血条颜色索引
         /// </summary>
-        public void SetColorIndex(int index)
+        private void SetColorIndex(int index)
         {
-            _colorIndex = Mathf.Clamp(index, 0, CurrentColors.Length - 1);
+            // 配置为空时保持索引 0，避免 Clamp(x, 0, -1) 得到 -1 污染索引导致后续取色越界
+            _colorIndex = (CurrentColors == null || CurrentColors.Length == 0) ? 0 : Mathf.Clamp(index, 0, CurrentColors.Length - 1);
             // 更新颜色显示（含下层血条显示的下一根颜色）
             UpdateHealthBarColors();
         }
